@@ -351,13 +351,16 @@ withController:(UIViewController *)controller
     for (NSObject* o in shareItems){
         BOOL isString = [o isKindOfClass:[SharePlusData class]];
         if(isString){
-            SharePlusData* sdata = (SharePlusData*)o;
-            NSString *s = [sdata text];
-            if ([s rangeOfString:@"https"].location != NSNotFound) {
-                NSURL *url = [NSURL URLWithString:s];
-                [mutableActivityItems addObject:url];
+          SharePlusData* sdata = (SharePlusData*)o;
+          NSString *s = [sdata text];
+          NSDataDetector *linkDetector = [NSDataDetector dataDetectorWithTypes:NSTextCheckingTypeLink error:nil];
+          NSArray *matches = [linkDetector matchesInString:s options:0 range:NSMakeRange(0, [s length])];
+          for (NSTextCheckingResult *match in matches) {
+            if ([match resultType] == NSTextCheckingTypeLink) {
+              NSURL *url = [match URL];
+              [mutableActivityItems addObject:url];
             }
-            
+          }
         }
     }
     
