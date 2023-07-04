@@ -341,61 +341,76 @@ TopViewControllerForViewController(UIViewController *viewController) {
 }
 
 + (void)share:(NSArray *)shareItems
-       withSubject:(NSString *)subject
-    withController:(UIViewController *)controller
-          atSource:(CGRect)origin
-          toResult:(FlutterResult)result
-        withResult:(BOOL)withResult {
-  UIActivityViewSuccessController *activityViewController =
-      [[UIActivityViewSuccessController alloc] initWithActivityItems:shareItems
-                                               applicationActivities:nil];
-
-  // Force subject when sharing a raw url or files
-  if (![subject isKindOfClass:[NSNull class]]) {
-    [activityViewController setValue:subject forKey:@"subject"];
-  }
-
-  activityViewController.popoverPresentationController.sourceView =
-      controller.view;
-  BOOL isCoordinateSpaceOfSourceView =
-      CGRectContainsRect(controller.view.frame, origin);
-
-  // If device is e.g. an iPad then hasPopoverPresentationController is true
-  BOOL hasPopoverPresentationController =
-      [activityViewController popoverPresentationController] != NULL;
-  if (hasPopoverPresentationController &&
-      (!isCoordinateSpaceOfSourceView || CGRectIsEmpty(origin))) {
-    NSString *sharePositionIssue = [NSString
-        stringWithFormat:
-            @"sharePositionOrigin: argument must be set, %@ must be non-zero "
-            @"and within coordinate space of source view: %@",
-            NSStringFromCGRect(origin),
-            NSStringFromCGRect(controller.view.bounds)];
-
-    result([FlutterError errorWithCode:@"error"
-                               message:sharePositionIssue
-                               details:nil]);
-    return;
-  }
-
-  if (!CGRectIsEmpty(origin)) {
-    activityViewController.popoverPresentationController.sourceRect = origin;
-  }
-
-  if (withResult) {
-    UIActivityViewSuccessCompanion *companion =
+  withSubject:(NSString *)subject
+withController:(UIViewController *)controller
+     atSource:(CGRect)origin
+     toResult:(FlutterResult)result
+   withResult:(BOOL)withResult {
+    NSMutableArray *mutableActivityItems = [NSMutableArray  arrayWithArray:shareItems];
+    
+    for (NSObject* o in shareItems){
+        BOOL isString = [o isKindOfClass:[SharePlusData class]];
+        if(isString){
+            SharePlusData* sdata = (SharePlusData*)o;
+            NSString *s = [sdata text];
+            if ([s rangeOfString:@"https"].location != NSNotFound) {
+                NSURL *url = [NSURL URLWithString:s];
+                [mutableActivityItems addObject:url];
+            }
+            
+        }
+    }
+    
+    UIActivityViewSuccessController *activityViewController =
+    [[UIActivityViewSuccessController alloc] initWithActivityItems:mutableActivityItems
+                                             applicationActivities:nil];
+    
+    // Force subject when sharing a raw url or files
+    if (![subject isKindOfClass:[NSNull class]]) {
+        [activityViewController setValue:subject forKey:@"subject"];
+    }
+    
+    activityViewController.popoverPresentationController.sourceView =
+    controller.view;
+    BOOL isCoordinateSpaceOfSourceView =
+    CGRectContainsRect(controller.view.frame, origin);
+    
+    // If device is e.g. an iPad then hasPopoverPresentationController is true
+    BOOL hasPopoverPresentationController =
+    [activityViewController popoverPresentationController] != NULL;
+    if (hasPopoverPresentationController &&
+        (!isCoordinateSpaceOfSourceView || CGRectIsEmpty(origin))) {
+        NSString *sharePositionIssue = [NSString
+                                        stringWithFormat:
+                                            @"sharePositionOrigin: argument must be set, %@ must be non-zero "
+                                        @"and within coordinate space of source view: %@",
+                                        NSStringFromCGRect(origin),
+                                        NSStringFromCGRect(controller.view.bounds)];
+        
+        result([FlutterError errorWithCode:@"error"
+                                   message:sharePositionIssue
+                                   details:nil]);
+        return;
+    }
+    
+    if (!CGRectIsEmpty(origin)) {
+        activityViewController.popoverPresentationController.sourceRect = origin;
+    }
+    
+    if (withResult) {
+        UIActivityViewSuccessCompanion *companion =
         [[UIActivityViewSuccessCompanion alloc] initWithResult:result];
-    activityViewController.companion = companion;
-    activityViewController.completionWithItemsHandler =
+        activityViewController.companion = companion;
+        activityViewController.completionWithItemsHandler =
         ^(UIActivityType activityType, BOOL completed, NSArray *returnedItems,
           NSError *activityError) {
-          companion.activityType = activityType;
-          companion.completed = completed;
+            companion.activityType = activityType;
+            companion.completed = completed;
         };
-  }
-  [controller presentViewController:activityViewController
-                           animated:YES
-                         completion:nil];
+    }
+    [controller presentViewController:activityViewController
+                             animated:YES
+                           completion:nil];
 }
 
 + (void)shareText:(NSString *)shareText
